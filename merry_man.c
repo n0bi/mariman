@@ -587,7 +587,11 @@ static bool world_get_enemy_state(const MerryManApp* app, int32_t chunk, uint32_
 
         enemy->y -= hop_height;
         if(((seed >> 5) & 1U) != 0U) {
-            enemy->x += (int32_t)((hop_cycle < 22U) ? (hop_cycle / 6U) : -(int32_t)((44U - hop_cycle) / 8U));
+            if(hop_cycle < 22U) {
+                enemy->x += (int32_t)(hop_cycle / 6U);
+            } else {
+                enemy->x -= (int32_t)((44U - hop_cycle) / 8U);
+            }
         }
     }
 
