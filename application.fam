@@ -6,9 +6,9 @@ App(
     requires=["gui"],
     stack_size=8 * 1024,
     fap_category="Games",
-    fap_description="1-bit side-scrolling platformer with enemies, pickups, and distance goals",
+    fap_description="1-bit side-scrolling platformer with enemies, pickups, and distance goals, simplified HUD",
     fap_author="OpenAI",
-    fap_version="1.1",
+    fap_version="1.2",
     fap_icon="icon.png",
     sources=["merry_man.c"],
 )

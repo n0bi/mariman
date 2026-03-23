@@ -73,14 +73,6 @@ typedef enum {
 } MerryManTile;
 
 typedef enum {
-    MerryManDecoNone = 0,
-    MerryManDecoBush,
-    MerryManDecoSign,
-    MerryManDecoRock,
-    MerryManDecoMound,
-} MerryManDeco;
-
-typedef enum {
     MerryManEnemyTypeNone = 0,
     MerryManEnemyTypeWalker,
     MerryManEnemyTypeHopper,
@@ -245,18 +237,6 @@ static const char* merry_man_rank_title(uint32_t distance) {
     return title;
 }
 
-static uint32_t merry_man_next_goal(uint32_t distance) {
-    size_t index;
-
-    for(index = 0U; index < (sizeof(merry_man_rank_goals) / sizeof(merry_man_rank_goals[0])); index++) {
-        if(merry_man_rank_goals[index].distance > distance) {
-            return merry_man_rank_goals[index].distance;
-        }
-    }
-
-    return merry_man_rank_goals[(sizeof(merry_man_rank_goals) / sizeof(merry_man_rank_goals[0])) - 1U].distance + 80U;
-}
-
 static uint32_t merry_man_total_score(const MerryManApp* app) {
     return app->farthest_distance + (app->collectible_score * 6U) + (app->enemy_score * 10U);
 }
@@ -352,19 +332,6 @@ static MerryManTile merry_man_tile_at(int32_t column, int32_t row) {
     }
 
     return MerryManTileEmpty;
-}
-
-static MerryManDeco merry_man_deco_for_segment(int32_t segment) {
-    const MerryManSegmentFeature feature = merry_man_segment_feature(segment);
-    const uint32_t roll = (merry_man_hash32((uint32_t)segment + 0xD3C01234U) >> 3) % 4U;
-
-    if(feature == MerryManSegmentBush) return MerryManDecoBush;
-    if(feature == MerryManSegmentSpikes) return MerryManDecoRock;
-    if((feature == MerryManSegmentFlat) && (roll == 0U)) return MerryManDecoSign;
-    if((feature == MerryManSegmentFlat) && (roll == 1U)) return MerryManDecoMound;
-    if((feature == MerryManSegmentPillar) && (roll == 2U)) return MerryManDecoRock;
-
-    return MerryManDecoNone;
 }
 
 static bool merry_man_world_solid_pixel(int32_t world_x, int32_t world_y) {
@@ -668,97 +635,38 @@ static void merry_man_draw_collectible(Canvas* canvas, int32_t x, int32_t y, uin
 
 static void merry_man_draw_ground_tile(Canvas* canvas, int32_t x, int32_t y) {
     canvas_draw_frame(canvas, x, y, MM_TILE_SIZE, MM_TILE_SIZE);
-    canvas_draw_line(canvas, x + 1, y + 2, x + 6, y + 2);
-    canvas_draw_line(canvas, x + 2, y + 4, x + 5, y + 4);
-    canvas_draw_dot(canvas, x + 2, y + 6);
-    canvas_draw_dot(canvas, x + 5, y + 5);
+    canvas_draw_box(canvas, x + 1, y + 5, 6U, 2U);
+    canvas_draw_dot(canvas, x + 2, y + 2);
+    canvas_draw_dot(canvas, x + 5, y + 3);
 }
 
 static void merry_man_draw_brick_tile(Canvas* canvas, int32_t x, int32_t y) {
     canvas_draw_frame(canvas, x, y, MM_TILE_SIZE, MM_TILE_SIZE);
-    canvas_draw_line(canvas, x + 1, y + 3, x + 6, y + 3);
-    canvas_draw_line(canvas, x + 3, y + 1, x + 3, y + 2);
-    canvas_draw_line(canvas, x + 4, y + 4, x + 4, y + 6);
+    canvas_draw_box(canvas, x + 1, y + 3, 6U, 1U);
+    canvas_draw_box(canvas, x + 3, y + 1, 1U, 2U);
+    canvas_draw_box(canvas, x + 4, y + 4, 1U, 3U);
 }
 
 static void merry_man_draw_pillar_tile(Canvas* canvas, int32_t x, int32_t y) {
     canvas_draw_box(canvas, x + 1, y, 6U, MM_TILE_SIZE);
     canvas_set_color(canvas, ColorWhite);
-    canvas_draw_line(canvas, x + 2, y + 1, x + 2, y + 6);
-    canvas_draw_line(canvas, x + 5, y + 1, x + 5, y + 6);
+    canvas_draw_box(canvas, x + 2, y + 1, 1U, 6U);
+    canvas_draw_box(canvas, x + 5, y + 1, 1U, 6U);
     canvas_set_color(canvas, ColorBlack);
     canvas_draw_frame(canvas, x + 1, y, 6U, MM_TILE_SIZE);
 }
 
 static void merry_man_draw_bridge_tile(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_line(canvas, x, y + 4, x + 7, y + 4);
-    canvas_draw_line(canvas, x + 1, y + 3, x + 1, y + 5);
-    canvas_draw_line(canvas, x + 4, y + 3, x + 4, y + 5);
-    canvas_draw_line(canvas, x + 6, y + 3, x + 6, y + 5);
+    canvas_draw_box(canvas, x, y + 4, 8U, 1U);
+    canvas_draw_box(canvas, x + 1, y + 3, 1U, 3U);
+    canvas_draw_box(canvas, x + 4, y + 3, 1U, 3U);
+    canvas_draw_box(canvas, x + 6, y + 3, 1U, 3U);
 }
 
 static void merry_man_draw_spikes(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_line(canvas, x, y + 3, x + 3, y);
-    canvas_draw_line(canvas, x + 3, y, x + 6, y + 3);
-    canvas_draw_line(canvas, x + 2, y + 3, x + 5, y);
-    canvas_draw_line(canvas, x + 5, y, x + 8, y + 3);
-    canvas_draw_line(canvas, x + 4, y + 3, x + 7, y);
-    canvas_draw_line(canvas, x + 7, y, x + 10, y + 3);
-}
-
-static void merry_man_draw_bush(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_frame(canvas, x + 2, y + 2, 8U, 4U);
-    canvas_draw_frame(canvas, x, y + 4, 6U, 3U);
-    canvas_draw_frame(canvas, x + 6, y + 4, 7U, 3U);
-}
-
-static void merry_man_draw_sign(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_frame(canvas, x, y, 8U, 5U);
-    canvas_draw_line(canvas, x + 4, y + 5, x + 4, y + 10);
-    canvas_draw_line(canvas, x + 3, y + 10, x + 5, y + 10);
-}
-
-static void merry_man_draw_rock(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_frame(canvas, x + 1, y + 1, 6U, 4U);
-    canvas_draw_dot(canvas, x + 3, y + 2);
-    canvas_draw_dot(canvas, x + 5, y + 3);
-}
-
-static void merry_man_draw_mound(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_line(canvas, x, y + 4, x + 4, y + 1);
-    canvas_draw_line(canvas, x + 4, y + 1, x + 8, y + 4);
-}
-
-static void merry_man_draw_cloud(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_frame(canvas, x + 2, y + 1, 9U, 4U);
-    canvas_draw_frame(canvas, x, y + 3, 6U, 3U);
-    canvas_draw_frame(canvas, x + 7, y + 3, 7U, 3U);
-}
-
-static void merry_man_draw_hill(Canvas* canvas, int32_t x, int32_t y) {
-    canvas_draw_line(canvas, x, y + 8, x + 6, y + 2);
-    canvas_draw_line(canvas, x + 6, y + 2, x + 12, y + 8);
-    canvas_draw_line(canvas, x + 2, y + 8, x + 10, y + 8);
-}
-
-static void merry_man_draw_background(Canvas* canvas, int32_t camera_x) {
-    const int32_t first_segment = (camera_x / MM_SEGMENT_PIXEL_W) - 1;
-    const int32_t last_segment = ((camera_x + MM_SCREEN_W) / MM_SEGMENT_PIXEL_W) + 1;
-    int32_t segment;
-
-    for(segment = first_segment; segment <= last_segment; segment++) {
-        const uint32_t sky = merry_man_hash32((uint32_t)segment + 0x5151AA11U);
-        const int32_t cloud_x = (segment * MM_SEGMENT_PIXEL_W) + 8 + (int32_t)(sky % 40U) - camera_x;
-        const int32_t cloud_y = 5 + (int32_t)((sky >> 8) % 10U);
-        const int32_t hill_x = (segment * MM_SEGMENT_PIXEL_W) + 24 + (int32_t)((sky >> 14) % 48U) - camera_x;
-
-        if(((sky & 1U) == 0U) && (cloud_x > -16) && (cloud_x < (MM_SCREEN_W + 8))) {
-            merry_man_draw_cloud(canvas, cloud_x, cloud_y);
-        }
-        if((((sky >> 3) & 1U) == 0U) && (hill_x > -20) && (hill_x < (MM_SCREEN_W + 12))) {
-            merry_man_draw_hill(canvas, hill_x, 42);
-        }
-    }
+    canvas_draw_box(canvas, x + 1, y + 2, 2U, 2U);
+    canvas_draw_box(canvas, x + 4, y + 1, 2U, 3U);
+    canvas_draw_box(canvas, x + 7, y + 2, 2U, 2U);
 }
 
 static void merry_man_draw_world(Canvas* canvas, const MerryManApp* app, int32_t camera_x) {
@@ -767,8 +675,6 @@ static void merry_man_draw_world(Canvas* canvas, const MerryManApp* app, int32_t
     const int32_t visible_segments_last = ((camera_x + MM_SCREEN_W) / MM_SEGMENT_PIXEL_W) + 1;
     int32_t screen_column;
     int32_t segment;
-
-    merry_man_draw_background(canvas, camera_x);
 
     for(screen_column = -1; screen_column <= ((MM_SCREEN_W / MM_TILE_SIZE) + 1); screen_column++) {
         const int32_t world_column = world_column_start + screen_column;
@@ -800,24 +706,6 @@ static void merry_man_draw_world(Canvas* canvas, const MerryManApp* app, int32_t
 
     for(segment = visible_segments_first; segment <= visible_segments_last; segment++) {
         const int32_t base_x = (segment * MM_SEGMENT_PIXEL_W) - camera_x;
-        const MerryManDeco deco = merry_man_deco_for_segment(segment);
-
-        switch(deco) {
-        case MerryManDecoBush:
-            merry_man_draw_bush(canvas, base_x + 28, 49);
-            break;
-        case MerryManDecoSign:
-            merry_man_draw_sign(canvas, base_x + 36, 46);
-            break;
-        case MerryManDecoRock:
-            merry_man_draw_rock(canvas, base_x + 60, 51);
-            break;
-        case MerryManDecoMound:
-            merry_man_draw_mound(canvas, base_x + 48, 48);
-            break;
-        default:
-            break;
-        }
 
         if(merry_man_segment_feature(segment) == MerryManSegmentSpikes) {
             merry_man_draw_spikes(canvas, base_x + 64, 52);
@@ -1087,10 +975,8 @@ static void merry_man_draw_callback(Canvas* canvas, void* context) {
     int32_t player_x;
     int32_t player_y;
     int32_t camera_x;
-    uint32_t next_goal;
-    char line_left[24];
-    char line_right[24];
-    char line_bottom[32];
+    char hud_left[16];
+    char hud_right[16];
 
     furi_mutex_acquire(app->mutex, FuriWaitForever);
 
@@ -1104,10 +990,9 @@ static void merry_man_draw_callback(Canvas* canvas, void* context) {
         canvas_draw_str_aligned(canvas, MM_SCREEN_W / 2, 31, AlignCenter, AlignTop, "LEFT/RIGHT move");
         canvas_draw_str_aligned(canvas, MM_SCREEN_W / 2, 39, AlignCenter, AlignTop, "UP/OK jump");
         canvas_draw_str_aligned(canvas, MM_SCREEN_W / 2, 47, AlignCenter, AlignTop, "BACK exit  OK start");
-        merry_man_draw_player(canvas, app, 18, 42);
-        merry_man_draw_bush(canvas, 30, 49);
-        merry_man_draw_collectible(canvas, 70, 28, app->frame);
-        canvas_draw_str_aligned(canvas, MM_SCREEN_W / 2, 57, AlignCenter, AlignBottom, "20 / 50 / 90 / 140+");
+        merry_man_draw_player(canvas, app, 22, 42);
+        merry_man_draw_collectible(canvas, 78, 28, app->frame);
+        canvas_draw_str_aligned(canvas, MM_SCREEN_W / 2, 57, AlignCenter, AlignBottom, "Collect and survive");
         furi_mutex_release(app->mutex);
         return;
     }
@@ -1115,20 +1000,15 @@ static void merry_man_draw_callback(Canvas* canvas, void* context) {
     player_x = app->player_x_q8 >> 8;
     player_y = app->player_y_q8 >> 8;
     camera_x = merry_man_clamp_i32(player_x - MM_CAMERA_LEAD_X, 0, INT_MAX);
-    next_goal = merry_man_next_goal(app->farthest_distance);
-
     merry_man_draw_world(canvas, app, camera_x);
     merry_man_draw_player(canvas, app, player_x - camera_x, player_y);
     merry_man_draw_labels(canvas, app, camera_x);
 
-    canvas_draw_line(canvas, 0, 10, MM_SCREEN_W - 1, 10);
     canvas_set_font(canvas, FontSecondary);
-    snprintf(line_left, sizeof(line_left), "DST %lu", (unsigned long)app->farthest_distance);
-    snprintf(line_right, sizeof(line_right), "OBJ %lu", (unsigned long)app->collectible_score);
-    snprintf(line_bottom, sizeof(line_bottom), "%s %lu", merry_man_rank_title(app->farthest_distance), (unsigned long)next_goal);
-    canvas_draw_str(canvas, 2, 8, line_left);
-    canvas_draw_str_aligned(canvas, MM_SCREEN_W - 2, 8, AlignRight, AlignBottom, line_right);
-    canvas_draw_str(canvas, 2, 63, line_bottom);
+    snprintf(hud_left, sizeof(hud_left), "D:%lu", (unsigned long)app->farthest_distance);
+    snprintf(hud_right, sizeof(hud_right), "O:%lu", (unsigned long)app->collectible_score);
+    canvas_draw_str(canvas, 1, 7, hud_left);
+    canvas_draw_str_aligned(canvas, MM_SCREEN_W - 1, 7, AlignRight, AlignBottom, hud_right);
 
     if(app->mode == MerryManModeGameOver) {
         char best_buffer[24];
